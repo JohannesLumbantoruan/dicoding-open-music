@@ -45,8 +45,6 @@ class SongsHandler {
                 }
             };
         } catch (error) {
-            console.log(error);
-            
             return errorResponse(error, h);
         }
 

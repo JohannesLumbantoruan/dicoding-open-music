@@ -24,7 +24,7 @@ class SongsService {
             albumId = null
         } = payload;
 
-        const songId = 'song-' + nanoid(16);
+        const songId = `song-${nanoid(16)}`;
 
         const query = {
             text: 'INSERT INTO songs VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
