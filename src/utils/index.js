@@ -27,3 +27,13 @@ exports.mapToModel = ({ id, title, performer}) => ({
     title,
     performer
 });
+
+exports.mapAlbum = album => {
+    const coverUrl = album['cover_url'];
+
+    delete album['cover_url'];
+
+    album['coverUrl'] = coverUrl;
+
+    return album;
+};

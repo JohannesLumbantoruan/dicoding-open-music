@@ -3,9 +3,10 @@ const autoBind = require('auto-bind');
 const { errorResponse } = require('../../utils');
 
 class AlbumsHandler {
-    constructor(service, validator) {
+    constructor(service, storageService, validator) {
         this._service = service;
         this._validator = validator;
+        this._storageService = storageService;
 
         autoBind(this);
     }
@@ -33,33 +34,25 @@ class AlbumsHandler {
     }
 
     async getAlbumsHandler(request, h) {
-        try {
-            const albums = await this._service.getAlbums();
+        const albums = await this._service.getAlbums();
 
-            return {
-                status: 'success',
-                data: {
-                    albums
-                }
-            };
-        } catch (error) {
-            return errorResponse(error, h);
-        }
+        return {
+            status: 'success',
+            data: {
+                albums
+            }
+        };
     }
 
     async getAlbumByIdHandler(request, h) {
-        try {
-            const { id } = request.params;
-            const album = await this._service.getAlbumById(id);
+        const { id } = request.params;
+        const album = await this._service.getAlbumById(id);
 
-            return {
-                status: 'success',
-                data: {
-                    album
-                }
+        return {
+            status: 'success',
+            data: {
+                album
             }
-        } catch (error) {
-            return errorResponse(error, h);
         }
     }
 
@@ -92,6 +85,82 @@ class AlbumsHandler {
         } catch (error) {
             return errorResponse(error, h);
         }
+    }
+
+    async postUploadAlbumCoverHandler(request, h) {
+        const { id } = request.params;
+
+        const album = await this._service.getAlbumById(id);
+
+        const { cover } = request.payload;
+
+        this._validator.validateImageHeaders(cover.hapi.headers);
+
+        const fileLocation = await this._storageService.writeFile(cover, cover.hapi);
+
+        const coverUrl = `http://${process.env.HOST}:${process.env.PORT}/albums/covers/${fileLocation}`;
+
+        await this._service.editAlbumColumn(id, 'cover_url', coverUrl);
+
+        const response = h.response({
+            status: 'success',
+            message: 'Sampul berhasil diunggah'
+        });
+
+        response.code(201);
+
+        return response;
+    }
+
+    async postLikeAlbumHandler(request, h) {
+        const { id: albumId } = request.params;
+        const { id: userId } = request.auth.credentials;
+
+        await this._service.getAlbumById(albumId);
+
+        await this._service.addLikeAlbum(albumId, userId);
+
+        const response = h.response({
+            status: 'success',
+            message: 'Berhasil menyukai album'
+        });
+
+        response.code(201);
+
+        return response;
+    }
+
+    async deleteLikeAlbumHandler(request, h) {
+        const { id: albumId } = request.params;
+        const { id: userId } = request.auth.credentials;
+
+        await this._service.getAlbumById(albumId);
+
+        await this._service.deleteLikeAlbum(albumId, userId);
+
+        return {
+            status: 'success',
+            message: 'Berhasil menghapus suka album'
+        };
+    }
+
+    async getLikeAlbumHandler(request, h) {
+        const { id: albumId } = request.params;
+
+        await this._service.getAlbumById(albumId);
+
+        const { likes, cache } = await this._service.getLikeAlbum(albumId);
+
+        const response = h.response({
+            status: 'success',
+            data: {
+                likes: parseInt(likes)
+            }
+        });
+
+        if (cache) response.header('X-Data-Source', 'cache');
+
+        return response;
     }
 }
 
